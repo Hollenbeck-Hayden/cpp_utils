@@ -1,6 +1,6 @@
 #pragma once
 
-#include "binary_io.h"
+#include "BinaryIO.h"
 
 enum class OpenMode {
     Read,

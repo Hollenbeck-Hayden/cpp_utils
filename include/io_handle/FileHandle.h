@@ -1,8 +1,6 @@
 #pragma once
 
-#include "binary_io.h"
 #include "BasicHandle.h"
-
 #include <stdio.h>
 
 class FileHandle : public BasicHandle {

@@ -2,7 +2,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "io_handle/binary_io.h"
+#include "io_handle/BinaryIO.h"
 #include "io_handle/FileHandle.h"
 #include "io_handle/DeviceHandle.h"
 
