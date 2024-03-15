@@ -8,6 +8,9 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 include(GNUInstallDirs)
+include(cmake/MakeCppUtilLibrary.cmake)
+
+
 include(FetchContent)
 
 # FetchContent_Declare(

@@ -4,13 +4,17 @@ FetchContent_Declare(
     GIT_TAG v2.13.6)
 FetchContent_MakeAvailable(catch)
 
-add_executable(test_io TestIO.cpp)
 
-target_compile_features(test_io PRIVATE cxx_std_17)
+function(make_CppUtils_test TEST_NAME TEST_SOURCE TEST_LIBS)
+    add_executable(${TEST_NAME} ${TEST_SOURCE})
 
-target_include_directories(test_io PRIVATE "${CppUtils_SOURCE_DIR}/include")
-target_link_libraries(test_io PRIVATE CppUtilsIO)
+    target_compile_features(${TEST_NAME} PRIVATE cxx_std_17)
 
-target_link_libraries(test_io PRIVATE Catch2::Catch2)
+    target_include_directories(${TEST_NAME} PRIVATE "${CppUtils_BUILD_INCLUDE_DIR}")
+    target_link_libraries(${TEST_NAME} PRIVATE Catch2::Catch2 ${TEST_LIBS})
 
-add_test(NAME test_io_test COMMAND test_io)
+    add_test(NAME ${TEST_NAME}_test COMMAND ${TEST_NAME})
+endfunction()
+
+make_CppUtils_test(test_io "TestIO.cpp" "CppUtilsIO")
+make_CppUtils_test(test_c_util "TestCUtil.cpp" "CppUtilsCUtils")

@@ -74,6 +74,8 @@ public:
         : T(std::forward<Args>(args)...), BinaryWriter()
     {}
 
+    virtual ~BinaryWriterTemplate() {}
+
 protected:
     virtual void write_impl(const uint8_t* buffer, size_t N) override {
         T::_write(buffer, N);
@@ -88,6 +90,8 @@ public:
         : T(std::forward<Args>(args)...), BinaryReader()
     {}
 
+    virtual ~BinaryReaderTemplate() {}
+
 protected:
     virtual void read_impl(uint8_t* buffer, size_t N) override {
         T::_read(buffer, N);
@@ -101,6 +105,8 @@ public:
     BinaryReaderWriterTemplate(Args&&... args)
         : T(std::forward<Args>(args)...), BinaryWriter(), BinaryReader()
     {}
+
+    virtual ~BinaryReaderWriterTemplate() {}
 
 protected:
     virtual void write_impl(const uint8_t* buffer, size_t N) override {

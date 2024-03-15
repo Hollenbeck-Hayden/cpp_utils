@@ -1,5 +1,7 @@
 #include "Socket.h"
 
+#include "CppUtils/c_util/CUtil.h"
+
 #include <unistd.h>
 #include <cstring>
 #include <sys/types.h>
@@ -10,7 +12,7 @@
 SocketHandle::SocketHandle()
     : socket_fd_(-1)
 {
-    std::memset((void*) &address_, 0, sizeof(address_));
+    initialize_zero(address_);
 }
 
 SocketHandle::~SocketHandle() {
@@ -54,7 +56,7 @@ void SocketHandle::connect(const std::string& hostname, int port) {
 
     address_.sin_family = AF_INET;
     address_.sin_port = htons(port);
-    std::memcpy((void*) &address_.sin_addr.s_addr, (void*) hostentry->h_addr, hostentry->h_length);
+    copy_raw_buffer(&address_.sin_addr.s_addr, hostentry->h_addr, hostentry->h_length);
 
     if (::connect(socket_fd_, (struct sockaddr*) &address_, sizeof(address_)) < 0)
         throw std::runtime_error("Error on connecting");
@@ -79,7 +81,7 @@ void SocketHandle::_write(const uint8_t* buffer, size_t N) {
 }
 
 void SocketHandle::_read(uint8_t* buffer, size_t N) {
-    std::memset((void*) buffer, 0, N * sizeof(uint8_t));
+    zero_buffer(buffer, N);
 
     size_t total = 0;
     while (total < N) {

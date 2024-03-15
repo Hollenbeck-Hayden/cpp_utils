@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 
 class SocketHandle : public BasicHandle {
-
+public:
     SocketHandle();
     virtual ~SocketHandle();
 

@@ -1,2 +1,3 @@
+add_subdirectory(c_util)
 add_subdirectory(io)
 add_subdirectory(networking)
