@@ -9,7 +9,7 @@ add_executable(test_io TestIO.cpp)
 target_compile_features(test_io PRIVATE cxx_std_17)
 
 target_include_directories(test_io PRIVATE "${CppUtils_SOURCE_DIR}/include")
-target_link_libraries(test_io PRIVATE io_handle)
+target_link_libraries(test_io PRIVATE CppUtilsIO)
 
 target_link_libraries(test_io PRIVATE Catch2::Catch2)
 

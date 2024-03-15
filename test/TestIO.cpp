@@ -2,9 +2,9 @@
 
 #include <catch2/catch.hpp>
 
-#include "io_handle/BinaryIO.h"
-#include "io_handle/FileHandle.h"
-#include "io_handle/DeviceHandle.h"
+#include "CppUtils/io/BinaryIO.h"
+#include "CppUtils/io/FileHandle.h"
+#include "CppUtils/io/DeviceHandle.h"
 
 #include <iostream>
 
