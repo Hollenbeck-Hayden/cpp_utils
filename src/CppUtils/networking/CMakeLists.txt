@@ -1,13 +1,12 @@
-set(LIBRARY_NAME "${CMAKE_PROJECT_NAME}IO")
-set(FOLDER_NAME "io")
+set(LIBRARY_NAME "${CMAKE_PROJECT_NAME}Networking")
+set(FOLDER_NAME "networking")
 
-file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${CppUtils_BUILD_INCLUDE_DIR}/${PROJECT_NAME}/${FOLDER_NAME}/*.h")
+file(GLOB HEADER_LIST CONFIGURE_DEPENDS "./*.h")
 
 add_library(${LIBRARY_NAME} ${HEADER_LIST})
 
 target_sources(${LIBRARY_NAME} PRIVATE
-    DeviceHandle.cpp
-    FileHandle.cpp
+    Socket.cpp
 )
 
 target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -15,7 +14,7 @@ target_include_directories(${LIBRARY_NAME} PUBLIC
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-target_compile_features(CppUtilsIO PUBLIC cxx_std_14)
+target_compile_features(${LIBRARY_NAME} PUBLIC cxx_std_14)
 
 
 # Installation

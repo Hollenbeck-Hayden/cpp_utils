@@ -22,14 +22,14 @@ set(CppUtils_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}/CppUtils")
 set(CppUtils_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}/CppUtils")
 
 # Build paths
-set(CppUtils_BUILD_INCLUDE_DIR "${CppUtils_SOURCE_DIR}/include")
+set(CppUtils_BUILD_INCLUDE_DIR "${CppUtils_SOURCE_DIR}/src")
 
 # Options
 set(CppUtils_CXX_STD "cxx_std_14")
 
 
 # Add actual library cmakes
-add_subdirectory(src)
+add_subdirectory(src/CppUtils)
 
 # Build testing
 if (BUILD_TESTING)
