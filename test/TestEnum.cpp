@@ -5,7 +5,7 @@
 #include "CppUtils/c_util/Enum.h"
 
 #include <iostream>
-
+#include <string_view>
 
 enum class Results {
     Good,
@@ -23,7 +23,7 @@ enum class ResultsFields {
 using ResultsIndexer = EnumIndexer<Results, Results::Good, Results::Bad, Results::Ugly, Results::Unimplemented, Results::New>;
 using ResultsFieldsIndexer = EnumIndexer<ResultsFields, ResultsFields::Name, ResultsFields::Value>;
 
-constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsIndexer, const char*, int>::make_table(
+constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsIndexer, std::string_view, int>::make_table(
         std::tuple(Results::Bad, "Bad", -1),
         std::tuple(Results::Unimplemented, "Unimplemented", 88),
         std::tuple(Results::New, "New", -100),
@@ -36,7 +36,8 @@ TEST_CASE("Enum Table") {
     REQUIRE(ResultsTable.num_entries() == 5);
     REQUIRE(ResultsTable.num_fields() == 2);
 
-    REQUIRE("Good" == std::string(ResultsTable.get<0>().get<Results::Good>()));
-    REQUIRE("Unimplemented" == std::string(ResultsTable.get<0>().get<Results::Unimplemented>()));
-    REQUIRE(-100 == ResultsTable.get<ResultsFields::Value>().get<Results::New>());
+    static_assert("Good" == ResultsTable.get<Results::Good, ResultsFields::Name>());
+    static_assert("Unimplemented" == ResultsTable.get<0>().get<Results::Unimplemented>());
+    static_assert(-100 == ResultsTable.get<ResultsFields::Value>().get<Results::New>());
+    static_assert(Results::Ugly == ResultsTable.lookup<ResultsFields::Name>("Ugly"));
 }
