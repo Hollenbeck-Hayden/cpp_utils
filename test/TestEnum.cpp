@@ -6,6 +6,7 @@
 
 #include <iostream>
 
+
 enum class Results {
     Good,
     Bad,
@@ -26,6 +27,8 @@ constexpr static auto ResultsTable = EnumTable<ResultsIndexer, const char*, int>
 
 
 TEST_CASE("Enum Table") {
+    REQUIRE(ResultsTable.num_entries() == 5);
+    REQUIRE(ResultsTable.num_fields() == 2);
     REQUIRE("Good" == std::string(ResultsTable.get<0>().get<Results::Good>()));
     REQUIRE("Unimplemented" == std::string(ResultsTable.get<0>().get<Results::Unimplemented>()));
 }

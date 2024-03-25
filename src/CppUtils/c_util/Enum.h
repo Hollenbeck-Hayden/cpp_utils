@@ -96,7 +96,6 @@ private:
     std::array<ValueType, N> values_;
 };
 
-
 template <typename Indexer, typename... ValueTypes>
 class EnumTable {
     using EnumType = typename Indexer::EnumType;
@@ -112,6 +111,14 @@ public:
     template <size_t i>
     constexpr auto get() const {
         return std::get<i>(entries_);
+    }
+
+    constexpr static size_t num_entries() {
+        return Indexer::size;
+    }
+
+    constexpr static size_t num_fields() {
+        return sizeof...(ValueTypes);
     }
 
 private:
