@@ -37,7 +37,10 @@ TEST_CASE("Enum Table") {
     REQUIRE(ResultsTable.num_fields() == 2);
 
     static_assert("Good" == ResultsTable.get<Results::Good, ResultsFields::Name>());
-    static_assert("Unimplemented" == ResultsTable.get<0>().get<Results::Unimplemented>());
+    static_assert("Unimplemented" == ResultsTable.get<Results::Unimplemented, ResultsFields::Name>());
     static_assert(-100 == ResultsTable.get<ResultsFields::Value>().get<Results::New>());
     static_assert(Results::Ugly == ResultsTable.lookup<ResultsFields::Name>("Ugly"));
+
+    int value = *ResultsTable.get<ResultsFields::Value>(Results::Bad);
+    REQUIRE(value == -1);
 }

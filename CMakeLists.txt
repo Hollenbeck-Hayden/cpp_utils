@@ -7,6 +7,11 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+
 include(GNUInstallDirs)
 include(cmake/MakeCppUtilLibrary.cmake)
 

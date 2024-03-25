@@ -85,8 +85,8 @@ public:
     }
 
     constexpr const ValueType* operator[](EnumType t) const {
-        constexpr auto index = Indexer::get(t);
-        if (index) return &values_[index];
+        std::optional<size_t> index = Indexer::get(t);
+        if (index) return values_.data()+(*index);
         return nullptr;
     }
 
@@ -125,6 +125,9 @@ class EnumTable {
     using TableTuple = std::tuple<EnumTableEntry<Indexer, ValueTypes>...>;
 
     template <FieldEnum field>
+    using TableEntryType = typename std::tuple_element<FieldsIndexer::template get<field>(), TableTuple>::type;
+
+    template <FieldEnum field>
     using FieldType = typename std::tuple_element<FieldsIndexer::template get<field>(), std::tuple<ValueTypes...> >::type;
 
 public:
@@ -136,10 +139,10 @@ public:
         return EnumTable<Indexer, FieldsIndexer, ValueTypes...>(build_tuple<0>(enums, entries...));
     }
 
-    template <size_t i>
-    constexpr auto get() const {
-        return std::get<i>(entries_);
-    }
+    // template <size_t i>
+    // constexpr const TableEntryType<i>& get() const {
+    //     return std::get<i>(entries_);
+    // }
 
     constexpr static size_t num_entries() {
         return Indexer::size;
@@ -150,17 +153,17 @@ public:
     }
 
     template <FieldEnum field>
-    constexpr auto get() const {
-        return get<FieldsIndexer::template get<field>()>();
+    constexpr const TableEntryType<field>& get() const {
+        return std::get<FieldsIndexer::template get<field>()>(entries_);
     }
 
     template <EnumType i, FieldEnum field>
-    constexpr auto get() const {
+    constexpr const FieldType<field>& get() const {
         return get<field>().template get<i>();
     }
 
     template <FieldEnum field>
-    constexpr auto get(EnumType i) const {
+    constexpr const FieldType<field>* get(EnumType i) const {
         return get<field>()[i];
     }
 

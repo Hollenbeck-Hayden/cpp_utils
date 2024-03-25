@@ -57,14 +57,14 @@ void DeviceHandle::close() {
 }
 
 void DeviceHandle::_write(const uint8_t* buffer, size_t N) {
-    int n_write = ::write(fd_, buffer, N);
+    size_t n_write = ::write(fd_, buffer, N);
     if (n_write != N)
         throw std::runtime_error("Write failure");
 }
 
 
 void DeviceHandle::_read(uint8_t* buffer, size_t N) {
-    int n_read = ::read(fd_, buffer, N);
+    size_t n_read = ::read(fd_, buffer, N);
     if (n_read != N)
         throw std::runtime_error("Read failure");
 }
