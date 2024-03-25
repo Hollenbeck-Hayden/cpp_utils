@@ -15,9 +15,15 @@ enum class Results {
     New,
 };
 
-using ResultsIndexer = EnumIndexer<Results, Results::Good, Results::Bad, Results::Ugly, Results::Unimplemented, Results::New>;
+enum class ResultsFields {
+    Name,
+    Value,
+};
 
-constexpr static auto ResultsTable = EnumTable<ResultsIndexer, const char*, int>::make_table(
+using ResultsIndexer = EnumIndexer<Results, Results::Good, Results::Bad, Results::Ugly, Results::Unimplemented, Results::New>;
+using ResultsFieldsIndexer = EnumIndexer<ResultsFields, ResultsFields::Name, ResultsFields::Value>;
+
+constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsIndexer, const char*, int>::make_table(
         std::tuple(Results::Bad, "Bad", -1),
         std::tuple(Results::Unimplemented, "Unimplemented", 88),
         std::tuple(Results::New, "New", -100),
@@ -29,6 +35,8 @@ constexpr static auto ResultsTable = EnumTable<ResultsIndexer, const char*, int>
 TEST_CASE("Enum Table") {
     REQUIRE(ResultsTable.num_entries() == 5);
     REQUIRE(ResultsTable.num_fields() == 2);
+
     REQUIRE("Good" == std::string(ResultsTable.get<0>().get<Results::Good>()));
     REQUIRE("Unimplemented" == std::string(ResultsTable.get<0>().get<Results::Unimplemented>()));
+    REQUIRE(-100 == ResultsTable.get<ResultsFields::Value>().get<Results::New>());
 }

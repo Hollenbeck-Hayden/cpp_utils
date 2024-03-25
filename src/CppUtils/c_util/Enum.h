@@ -6,44 +6,7 @@
 #include <tuple>
 #include <utility>
 
-template <typename Enum, Enum... EnumValues>
-class EnumIndexer {
-public:
-    using EnumType = Enum;
-    constexpr static size_t size = sizeof...(EnumValues);
-    constexpr static std::array<Enum, size> values{EnumValues...};
-
-    template <EnumType t>
-    constexpr static bool contains() {
-        for (EnumType e : values) {
-            if (e == t) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    template <EnumType t>
-    constexpr static size_t get() {
-        static_assert(contains<t>());
-        for (size_t i = 0; i < size; i++) {
-            if (values[i] == t) {
-                return i;
-            }
-        }
-        __builtin_unreachable();
-    }
-
-    constexpr static size_t get(EnumType t) {
-        for (size_t i = 0; i < size; i++) {
-            if (values[i] == t) {
-                return i;
-            }
-        }
-        // TODO: need a better error
-        return static_cast<size_t>(-1);
-    }
-};
+namespace {
 
 template <typename T, typename Cont>
 constexpr size_t find_index(const Cont& xs, const T& x) {
@@ -55,6 +18,42 @@ constexpr size_t find_index(const Cont& xs, const T& x) {
     return static_cast<size_t>(-1);
 }
 
+template <typename T, typename Cont>
+constexpr bool contains(const Cont& xs, const T& x) {
+    for (size_t i = 0; i < xs.size(); i++) {
+        if (xs[i] == x) {
+            return true;
+        }
+    }
+    return false;
+}
+
+}
+
+
+template <typename Enum, Enum... EnumValues>
+class EnumIndexer {
+public:
+    using EnumType = Enum;
+    constexpr static size_t size = sizeof...(EnumValues);
+    constexpr static std::array<Enum, size> values{EnumValues...};
+
+    template <EnumType t>
+    constexpr static bool contains() {
+        return ::contains(values, t);
+    }
+
+    template <EnumType t>
+    constexpr static size_t get() {
+        static_assert(contains<t>());
+        return ::find_index(values, t);
+    }
+
+    constexpr static size_t get(EnumType t) {
+        return ::find_index(values, t);
+    }
+};
+
 
 template <typename Indexer, typename ValueType>
 class EnumTableEntry {
@@ -65,10 +64,6 @@ public:
     constexpr EnumTableEntry(const Args&... args)
         : values_({args...})
     {}
-
-    // constexpr EnumTableEntry(const std::array<ValueType, N>& values)
-    //     : values_(values)
-    // {}
 
     template <EnumType t>
     constexpr const ValueType& get() const {
@@ -96,16 +91,18 @@ private:
     std::array<ValueType, N> values_;
 };
 
-template <typename Indexer, typename... ValueTypes>
+template <typename Indexer, typename FieldsIndexer, typename... ValueTypes>
 class EnumTable {
     using EnumType = typename Indexer::EnumType;
+    using FieldType = typename FieldsIndexer::EnumType;
     using TableTuple = std::tuple<EnumTableEntry<Indexer, ValueTypes>...>;
 public:
 
     template <typename... EntryTypes>
     constexpr static auto make_table(const EntryTypes&... entries) {
+        static_assert(sizeof...(ValueTypes) == FieldsIndexer::size);
         const std::array<EnumType, Indexer::size> enums{std::get<0>(entries)...};
-        return EnumTable<Indexer, ValueTypes...>(build_tuple<0>(enums, entries...));
+        return EnumTable<Indexer, FieldsIndexer, ValueTypes...>(build_tuple<0>(enums, entries...));
     }
 
     template <size_t i>
@@ -119,6 +116,11 @@ public:
 
     constexpr static size_t num_fields() {
         return sizeof...(ValueTypes);
+    }
+
+    template <FieldType field>
+    constexpr auto get() const {
+        return get<FieldsIndexer::template get<field>()>();
     }
 
 private:

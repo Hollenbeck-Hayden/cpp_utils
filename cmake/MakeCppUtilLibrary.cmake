@@ -6,7 +6,7 @@ function(make_CppUtils_library LIBRARY_NAME FOLDER_NAME)
     file(GLOB HEADER_LIST CONFIGURE_DEPENDS "./*.h")
     file(GLOB SOURCE_LIST CONFIGURE_DEPENDS "./*.cpp")
 
-    add_library(${LIBRARY_NAME} ${HEADER_LIST})
+    add_library(${LIBRARY_NAME} SHARED ${HEADER_LIST})
     target_sources(${LIBRARY_NAME} PRIVATE ${SOURCE_LIST})
 
     target_include_directories(${LIBRARY_NAME} PUBLIC
