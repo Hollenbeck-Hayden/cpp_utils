@@ -19,6 +19,8 @@ endfunction()
 
 function(install_CppUtils_library LIBRARY_NAME FOLDER_NAME)
     set(TARGETS_NAME "${LIBRARY_NAME}Targets")
+    
+    file(GLOB HEADER_LIST CONFIGURE_DEPENDS "./*.h")
 
     install(
         TARGETS ${LIBRARY_NAME}
@@ -30,7 +32,7 @@ function(install_CppUtils_library LIBRARY_NAME FOLDER_NAME)
 
     install(
         FILES ${HEADER_LIST}
-        DESTINATION ${CppUtils_INSTALL_INCLUDE_DIR}/${FOLDER_NAME}
+        DESTINATION "${CppUtils_INSTALL_INCLUDE_DIR}/${FOLDER_NAME}"
     )
 
     install(

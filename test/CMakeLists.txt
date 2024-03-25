@@ -18,3 +18,4 @@ endfunction()
 
 make_CppUtils_test(test_io "TestIO.cpp" "CppUtilsIO")
 make_CppUtils_test(test_c_util "TestCUtil.cpp" "CppUtilsCUtils")
+make_CppUtils_test(test_enum "TestEnum.cpp" "CppUtilsCUtils")

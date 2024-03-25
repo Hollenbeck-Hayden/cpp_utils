@@ -17,6 +17,9 @@ public:
 protected:
     int fd_;
 
+    DeviceHandle(const std::string& filename, int mode);
+    void open_raw(const std::string& filename, int mode);
+
     void _write(const uint8_t* buffer, size_t N);
     void _read(uint8_t* buffer, size_t N);
 };

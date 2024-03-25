@@ -13,26 +13,36 @@ DeviceHandle::DeviceHandle(const std::string& filename, OpenMode mode)
     open(filename, mode);
 }
 
+DeviceHandle::DeviceHandle(const std::string& filename, int mode)
+    : DeviceHandle()
+{
+    open_raw(filename, mode);
+}
+
 DeviceHandle::~DeviceHandle() {
     close();
 }
 
 void DeviceHandle::open(const std::string& filename, OpenMode mode) {
-    mode_t umask = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
     switch (mode) {
         case OpenMode::Append:
-            fd_ = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, umask);
+            open_raw(filename, O_WRONLY | O_CREAT | O_APPEND);
             break;
         case OpenMode::Truncate:
-            fd_ = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, umask);
+            open_raw(filename, O_WRONLY | O_CREAT | O_TRUNC);
             break;
         case OpenMode::Read:
-            fd_ = ::open(filename.c_str(), O_RDONLY, umask);
+            open_raw(filename, O_RDONLY);
             break;
         case OpenMode::ReadWrite:
-            fd_ = ::open(filename.c_str(), O_RDWR | O_CREAT, umask);
+            open_raw(filename, O_RDWR | O_CREAT);
             break;
     }
+}
+
+void DeviceHandle::open_raw(const std::string& filename, int mode) {
+    const mode_t umask = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+    fd_ = ::open(filename.c_str(), mode, umask);
 }
 
 bool DeviceHandle::good() const {
