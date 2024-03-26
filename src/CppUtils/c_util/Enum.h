@@ -42,16 +42,60 @@ constexpr std::optional<CommonType> any_optional(const std::optional<CommonType>
     return any_optional<CommonType>(values...);
 }
 
-template <typename Enum, template <Enum> typename FunctorType, Enum... EnumValues, std::enable_if_t<sizeof...(EnumValues) == 0, bool> = true>
-constexpr void dispatch_enum(Enum) {
+template <typename FuncType, typename TupleType, size_t... Is>
+constexpr auto tuple_to_variadic(FuncType&& f, const TupleType& args, std::index_sequence<Is...>) {
+    return f(std::get<Is>(args)...);
 }
 
-template <typename Enum, template <Enum> typename FunctorType, Enum value, Enum... EnumValues>
-constexpr void dispatch_enum(Enum x) {
-    if (x == value)
-        FunctorType<value>()();
-    else
-        dispatch_enum<Enum, FunctorType, EnumValues...>(x);
+template <typename FuncType, typename TupleType>
+constexpr auto tuple_to_variadic(FuncType&& f, const TupleType& args) {
+    return tuple_to_variadic(std::forward<FuncType>(f), args, std::make_index_sequence<std::tuple_size_v<TupleType> >{});
+}
+
+
+
+template <typename Enum, template <Enum> typename FunctorType, typename... Args>
+struct dispatch_return {
+    template <Enum... EnumValues>
+    using type = std::common_type_t<std::invoke_result_t<FunctorType<EnumValues>, Args&&...>...>;
+};
+
+template <typename T>
+struct optional_return {
+    using type = std::optional<T>;
+    
+    template <typename FuncType, typename TupleType>
+    static type eval(FuncType&& f, const TupleType& t) {
+        return std::make_optional(tuple_to_variadic(f, t));
+    }
+
+    static type base_case() {
+        return type(std::nullopt);
+    }
+};
+
+template <>
+struct optional_return<void> {
+    template <typename FuncType, typename TupleType>
+    static void eval(FuncType&& f, const TupleType& t) {
+        tuple_to_variadic(f, t);
+    }
+
+    static void base_case() {}
+};
+
+template <typename Enum, template <Enum> typename FunctorType, typename RetType, typename TupleType, Enum... EnumValues, std::enable_if_t<sizeof...(EnumValues) == 0, bool> = true>
+constexpr auto dispatch_enum(Enum, const TupleType&) {
+    return optional_return<RetType>::base_case();
+}
+
+template <typename Enum, template <Enum> typename FunctorType, typename RetType, typename TupleType, Enum value, Enum... EnumValues>
+constexpr auto dispatch_enum(Enum x, const TupleType& args) {
+    if (x == value) {
+        return optional_return<RetType>::eval(FunctorType<value>(), args);
+    } else {
+        return dispatch_enum<Enum, FunctorType, RetType, TupleType, EnumValues...>(x, args);
+    }
 }
 
 }
@@ -79,9 +123,13 @@ public:
         return ::find_index(values, t);
     }
 
-    template <template <Enum> typename FunctorType>
-    constexpr static void dispatch(Enum x) {
-        dispatch_enum<Enum, FunctorType, EnumValues...>(x);
+    template <template <Enum> typename FuncType, typename... Args>
+    constexpr static auto dispatch(Enum x, Args&&... args) {
+        return dispatch_enum<Enum,
+                      FuncType,
+                      typename dispatch_return<Enum, FuncType, Args...>::type<EnumValues...>,
+                      std::tuple<Args&&...>,
+                      EnumValues...>(x, std::forward_as_tuple(args...));
     }
 };
 

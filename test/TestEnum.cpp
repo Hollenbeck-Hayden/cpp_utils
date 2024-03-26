@@ -31,16 +31,21 @@ constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsInde
         std::tuple(Results::Ugly, "Ugly", 12893)
 );
 
+template <Results r>
+struct check_result {
+    bool operator()(const std::string& s) const { return s == ResultsTable.get<r, ResultsFields::Name>(); }
+};
 
 template <Results r>
 class handle_result {
 public:
     handle_result() = default;
 
-    void operator()() {
-        REQUIRE("Good" == ResultsTable.get<r, ResultsFields::Name>());
+    void operator()(const std::string& s) {
+        REQUIRE(s == ResultsTable.get<r, ResultsFields::Name>());
     }
 };
+
 
 TEST_CASE("Enum Table") {
     REQUIRE(ResultsTable.num_entries() == 5);
@@ -54,5 +59,10 @@ TEST_CASE("Enum Table") {
     int value = *ResultsTable.get<ResultsFields::Value>(Results::Bad);
     REQUIRE(value == -1);
 
-    ResultsIndexer::dispatch<handle_result>(Results::Good);
+    //ResultsIndexer::dispatch<handle_result>(Results::Good)("Good");
+    auto check = ResultsIndexer::dispatch<check_result>(Results::Good, "Good");
+    REQUIRE(check);
+    REQUIRE(*check);
+
+    ResultsIndexer::dispatch<handle_result>(Results::New, "New");
 }
