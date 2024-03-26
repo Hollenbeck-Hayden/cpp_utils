@@ -7,6 +7,8 @@
 #include <utility>
 #include <optional>
 
+#include "CppUtils/preproc/VariadicMacros.h"
+
 namespace {
 
 template <typename T, typename Cont>
@@ -40,7 +42,17 @@ constexpr std::optional<CommonType> any_optional(const std::optional<CommonType>
     return any_optional<CommonType>(values...);
 }
 
+template <typename Enum, template <Enum> typename FunctorType, Enum... EnumValues, std::enable_if_t<sizeof...(EnumValues) == 0, bool> = true>
+constexpr void dispatch_enum(Enum) {
+}
 
+template <typename Enum, template <Enum> typename FunctorType, Enum value, Enum... EnumValues>
+constexpr void dispatch_enum(Enum x) {
+    if (x == value)
+        FunctorType<value>()();
+    else
+        dispatch_enum<Enum, FunctorType, EnumValues...>(x);
+}
 
 }
 
@@ -66,7 +78,18 @@ public:
     constexpr static std::optional<size_t> get(EnumType t) {
         return ::find_index(values, t);
     }
+
+    template <template <Enum> typename FunctorType>
+    constexpr static void dispatch(Enum x) {
+        dispatch_enum<Enum, FunctorType, EnumValues...>(x);
+    }
 };
+
+#define INDEXED_ENUM(enum_name, ...) \
+    enum class enum_name { __VA_ARGS__ }; \
+    using enum_name##Indexer = EnumIndexer<enum_name, \
+        CPPUTILS_DECORATED_1_MAP(COMMA, CPPUTILS_PREPEND_NAMESPACE, enum_name, __VA_ARGS__) \
+    >;
 
 
 template <typename Indexer, typename ValueType>
@@ -170,6 +193,16 @@ public:
     template <FieldEnum field>
     constexpr std::optional<EnumType> lookup(const FieldType<field>& value) const {
         return lookup_helper<field>(value, std::make_index_sequence<Indexer::size>{});
+    }
+
+    constexpr static std::optional<size_t> to_index(EnumType i) {
+        return Indexer::get(i);
+    }
+
+    constexpr static std::optional<EnumType> from_index(size_t i) {
+        if (i < Indexer::size)
+            return Indexer::values[i];
+        return std::nullopt;
     }
 
 private:

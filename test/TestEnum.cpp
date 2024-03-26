@@ -7,21 +7,21 @@
 #include <iostream>
 #include <string_view>
 
-enum class Results {
+
+#include "CppUtils/preproc/VariadicMacros.h"
+
+INDEXED_ENUM(Results,
     Good,
     Bad,
     Ugly,
     Unimplemented,
-    New,
-};
+    New
+);
 
-enum class ResultsFields {
+INDEXED_ENUM(ResultsFields,
     Name,
-    Value,
-};
-
-using ResultsIndexer = EnumIndexer<Results, Results::Good, Results::Bad, Results::Ugly, Results::Unimplemented, Results::New>;
-using ResultsFieldsIndexer = EnumIndexer<ResultsFields, ResultsFields::Name, ResultsFields::Value>;
+    Value
+);
 
 constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsIndexer, std::string_view, int>::make_table(
         std::tuple(Results::Bad, "Bad", -1),
@@ -31,6 +31,16 @@ constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsInde
         std::tuple(Results::Ugly, "Ugly", 12893)
 );
 
+
+template <Results r>
+class handle_result {
+public:
+    handle_result() = default;
+
+    void operator()() {
+        REQUIRE("Good" == ResultsTable.get<r, ResultsFields::Name>());
+    }
+};
 
 TEST_CASE("Enum Table") {
     REQUIRE(ResultsTable.num_entries() == 5);
@@ -43,4 +53,6 @@ TEST_CASE("Enum Table") {
 
     int value = *ResultsTable.get<ResultsFields::Value>(Results::Bad);
     REQUIRE(value == -1);
+
+    ResultsIndexer::dispatch<handle_result>(Results::Good);
 }

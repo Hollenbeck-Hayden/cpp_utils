@@ -14,7 +14,7 @@ function(make_CppUtils_library LIBRARY_NAME FOLDER_NAME)
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     )
 
-    target_compile_features(${LIBRARY_NAME} PUBLIC cxx_std_14)
+    target_compile_features(${LIBRARY_NAME} PUBLIC cxx_std_17)
 endfunction()
 
 function(install_CppUtils_library LIBRARY_NAME FOLDER_NAME)
@@ -41,4 +41,17 @@ function(install_CppUtils_library LIBRARY_NAME FOLDER_NAME)
         NAMESPACE ${PROJECT_NAME}::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
+endfunction()
+
+function(make_CppUtils_header_library LIBRARY_NAME FOLDER_NAME)
+    file(GLOB HEADER_LIST CONFIGURE_DEPENDS "./*.h")
+
+    add_library(${LIBRARY_NAME} INTERFACE ${HEADER_LIST})
+
+    target_include_directories(${LIBRARY_NAME} INTERFACE
+        "$<BUILD_INTERFACE:${CppUtils_BUILD_INCLUDE_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    )
+
+    target_compile_features(${LIBRARY_NAME} INTERFACE cxx_std_17)
 endfunction()
