@@ -72,11 +72,11 @@ void SocketHandle::accept(const SocketHandle& server) {
 void SocketHandle::_write(const uint8_t* buffer, size_t N) {
     size_t total = 0;
     while (total < N) {
-        size_t n = ::send(socket_fd_, &buffer[total], N - total, 0);
-        if (n == 0)
+        ssize_t n = ::send(socket_fd_, &buffer[total], N - total, 0);
+        if (n <= 0)
             throw std::runtime_error("Disconnect while writing socket");
 
-        total += n;
+        total += static_cast<size_t>(n);
     }
 }
 
@@ -85,10 +85,10 @@ void SocketHandle::_read(uint8_t* buffer, size_t N) {
 
     size_t total = 0;
     while (total < N) {
-        size_t n = ::recv(socket_fd_, &buffer[total], N - total, 0);
-        if (n == 0)
+        ssize_t n = ::recv(socket_fd_, &buffer[total], N - total, 0);
+        if (n <= 0)
             throw std::runtime_error("Disconnect while reading socket");
 
-        total += n;
+        total += static_cast<size_t>(n);
     }
 }
