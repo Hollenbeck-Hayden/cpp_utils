@@ -1,6 +1,7 @@
 #include "Socket.h"
 
 #include "CppUtils/c_util/CUtil.h"
+#include "CppUtils/io/IOUtils.h"
 
 #include <unistd.h>
 #include <cstring>
@@ -70,25 +71,19 @@ void SocketHandle::accept(const SocketHandle& server) {
 }
 
 void SocketHandle::_write(const uint8_t* buffer, size_t N) {
-    size_t total = 0;
-    while (total < N) {
-        ssize_t n = ::send(socket_fd_, &buffer[total], N - total, 0);
-        if (n <= 0)
-            throw std::runtime_error("Disconnect while writing socket");
 
-        total += static_cast<size_t>(n);
-    }
+    detail::staggered_io(
+            [this] (const uint8_t* xs, size_t n) {
+                return ::send(socket_fd_, xs, n, 0);
+            },
+            buffer, N);
 }
 
 void SocketHandle::_read(uint8_t* buffer, size_t N) {
-    zero_buffer(buffer, N);
 
-    size_t total = 0;
-    while (total < N) {
-        ssize_t n = ::recv(socket_fd_, &buffer[total], N - total, 0);
-        if (n <= 0)
-            throw std::runtime_error("Disconnect while reading socket");
-
-        total += static_cast<size_t>(n);
-    }
+    detail::staggered_io(
+            [this] (uint8_t* xs, size_t n) {
+                return ::recv(socket_fd_, xs, n, 0);
+            },
+            buffer, N);
 }

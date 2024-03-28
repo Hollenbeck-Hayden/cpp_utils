@@ -1,7 +1,9 @@
-#include "CppUtils/io/DeviceHandle.h"
+#include "DeviceHandle.h"
+#include "IOUtils.h"
 
 #include "unistd.h"
 #include "fcntl.h"
+
 
 DeviceHandle::DeviceHandle()
     : BasicHandle(), fd_(-1)
@@ -57,14 +59,18 @@ void DeviceHandle::close() {
 }
 
 void DeviceHandle::_write(const uint8_t* buffer, size_t N) {
-    size_t n_write = ::write(fd_, buffer, N);
-    if (n_write != N)
-        throw std::runtime_error("Write failure");
+    detail::staggered_io(
+            [fd = fd_] (const uint8_t* xs, size_t n) {
+                return ::write(fd, xs, n);
+            },
+            buffer, N);
 }
 
 
 void DeviceHandle::_read(uint8_t* buffer, size_t N) {
-    size_t n_read = ::read(fd_, buffer, N);
-    if (n_read != N)
-        throw std::runtime_error("Read failure");
+    detail::staggered_io(
+            [fd = fd_] (uint8_t* xs, size_t n) {
+                return ::read(fd, xs, n);
+            },
+            buffer, N);
 }
