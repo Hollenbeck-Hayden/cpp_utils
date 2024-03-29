@@ -6,19 +6,25 @@
 #include <tuple>
 #include <utility>
 #include <optional>
+#include <functional>
 
 #include "CppUtils/preproc/VariadicMacros.h"
 
 namespace {
 
-template <typename T, typename Cont>
-constexpr std::optional<size_t> find_index(const Cont& xs, const T& x) {
+template <typename Cont, typename Predicate>
+constexpr std::optional<size_t> find_index(const Cont& xs, const Predicate& p) {
     for (size_t i = 0; i < xs.size(); i++) {
-        if (xs[i] == x) {
+        if (p(xs[i])) {
             return i;
         }
     }
     return std::nullopt;
+}
+
+template <typename T, typename Cont>
+constexpr std::optional<size_t> find_matching_index(const Cont& xs, const T& x) {
+    return find_index(xs, [x] (const T& t) { return x == t; });
 }
 
 template <typename T, typename Cont>
@@ -31,6 +37,21 @@ constexpr bool contains(const Cont& xs, const T& x) {
     return false;
 }
 
+template <typename EnumTableType, typename EnumTableType::FieldEnum f>
+struct LookupFunctor {
+    using EnumType = typename EnumTableType::EnumType;
+
+    template <EnumType e>
+    struct functor {
+        auto operator()(const EnumTableType& table, const typename EnumTableType::FieldValue<f>& value) const 
+            -> std::optional<std::pair<typename EnumTableType::EnumType, std::reference_wrapper<const typename EnumTableType::EntryType>>>{
+            if (table.template get<e,f>() == value)
+                return std::make_pair(e, table.template get<e>());
+            return std::nullopt;
+        }
+    };
+};
+
 template <typename CommonType>
 constexpr std::optional<CommonType> any_optional() {
     return std::nullopt;
@@ -42,6 +63,7 @@ constexpr std::optional<CommonType> any_optional(const std::optional<CommonType>
     return any_optional<CommonType>(values...);
 }
 
+
 template <typename FuncType, typename TupleType, size_t... Is>
 constexpr auto tuple_to_variadic(FuncType&& f, const TupleType& args, std::index_sequence<Is...>) {
     return f(std::get<Is>(args)...);
@@ -51,8 +73,6 @@ template <typename FuncType, typename TupleType>
 constexpr auto tuple_to_variadic(FuncType&& f, const TupleType& args) {
     return tuple_to_variadic(std::forward<FuncType>(f), args, std::make_index_sequence<std::tuple_size_v<TupleType> >{});
 }
-
-
 
 template <typename Enum, template <Enum> typename FunctorType, typename... Args>
 struct dispatch_return {
@@ -116,11 +136,11 @@ public:
     template <EnumType t>
     constexpr static size_t get() {
         static_assert(contains<t>());
-        return *::find_index(values, t);
+        return *::find_matching_index(values, t);
     }
 
     constexpr static std::optional<size_t> get(EnumType t) {
-        return ::find_index(values, t);
+        return ::find_matching_index(values, t);
     }
 
     template <template <Enum> typename FuncType, typename... Args>
@@ -131,6 +151,11 @@ public:
                       std::tuple<Args&&...>,
                       EnumValues...>(x, std::forward_as_tuple(args...));
     }
+
+    // template <template <Enum> typename FunctorType, typename... Args>
+    // constexpr static void foreach(Args&&... args) {
+    //     FunctorType<EnumValues>(args...),...;
+    // }
 };
 
 #define INDEXED_ENUM(enum_name, ...) \
@@ -140,151 +165,190 @@ public:
     >;
 
 
-template <typename Indexer, typename ValueType>
+template <typename FieldsIndexer, typename... ValueTypes>
 class EnumTableEntry {
-    using EnumType = typename Indexer::EnumType;
-    constexpr static size_t N = Indexer::size;
+    using EntryType = std::tuple<ValueTypes...>;
 public:
-    template <typename... Args>
-    constexpr EnumTableEntry(const Args&... args)
-        : values_({args...})
-    {}
+    using Self = EnumTableEntry<FieldsIndexer, ValueTypes...>;
+    using FieldEnum = typename FieldsIndexer::EnumType;
+    
+    template <FieldEnum field>
+    using FieldType = typename std::tuple_element<FieldsIndexer::template get<field>(), EntryType>::type;
 
-    template <EnumType t>
-    constexpr const ValueType& get() const {
-        return values_[Indexer::template get<t>()];
+    constexpr static auto num_fields() -> size_t {
+        return FieldsIndexer::size;
     }
 
-    constexpr const ValueType* operator[](EnumType t) const {
-        std::optional<size_t> index = Indexer::get(t);
-        if (index) return values_.data()+(*index);
-        return nullptr;
+
+    constexpr EnumTableEntry(ValueTypes... values)
+        : values_(values...)
+    {
+        static_assert(sizeof...(ValueTypes) == FieldsIndexer::size);
     }
 
-    constexpr static auto make_sorted(const std::array<EnumType, N>& enums, const std::array<ValueType, N>& values) {
-        return make_sorted_helper(enums, values, std::make_index_sequence<N>{});
+    constexpr EnumTableEntry(const std::tuple<ValueTypes...>& values)
+        : values_(values)
+    {
+        static_assert(sizeof...(ValueTypes) == FieldsIndexer::size);
+    }
+    
+
+    template <FieldEnum field>
+    constexpr auto get() const -> FieldType<field> const& {
+        return std::get<FieldsIndexer::template get<field>()>(values_);
+    }
+
+    template <FieldEnum field>
+    constexpr auto c_get() const -> FieldType<field> {
+        return std::get<FieldsIndexer::template get<field>()>(values_);
     }
 
 private:
-
-    template <size_t... Is>
-    constexpr static auto make_sorted_helper(
-            const std::array<EnumType, N>& enums,
-            const std::array<ValueType, N>& values,
-            std::index_sequence<Is...>) {
-        return EnumTableEntry<Indexer, ValueType>(safe_reverse_lookup(enums, values, Is)...);
-    }
-
-    constexpr static auto safe_reverse_lookup(
-            const std::array<EnumType, N>& enums,
-            const std::array<ValueType, N>& values,
-            size_t i)
-    {
-        auto index = find_index(enums, Indexer::values[i]);
-        return values[*index];
-    }
-
-    std::array<ValueType, N> values_;
+    std::tuple<ValueTypes...> values_;
 };
 
 
 template <typename Indexer, typename FieldsIndexer, typename... ValueTypes>
 class EnumTable {
+    using TableType = std::array<EnumTableEntry<FieldsIndexer, ValueTypes...>, Indexer::size>;
+public:
+    // -- Typedefs
+    
     using Self = EnumTable<Indexer, FieldsIndexer, ValueTypes...>;
     using EnumType = typename Indexer::EnumType;
     using FieldEnum = typename FieldsIndexer::EnumType;
-    using TableTuple = std::tuple<EnumTableEntry<Indexer, ValueTypes>...>;
+    using EntryType = EnumTableEntry<FieldsIndexer, ValueTypes...>;
+
 
     template <FieldEnum field>
-    using TableEntryType = typename std::tuple_element<FieldsIndexer::template get<field>(), TableTuple>::type;
+    using FieldType = typename EntryType::FieldType<field>;
 
-    template <FieldEnum field>
-    using FieldType = typename std::tuple_element<FieldsIndexer::template get<field>(), std::tuple<ValueTypes...> >::type;
+    // -- Constructors
 
-public:
-
-    template <typename... EntryTypes>
-    constexpr static auto make_table(const EntryTypes&... entries) {
-        static_assert(sizeof...(ValueTypes) == FieldsIndexer::size);
-        const std::array<EnumType, Indexer::size> enums{std::get<0>(entries)...};
-        return EnumTable<Indexer, FieldsIndexer, ValueTypes...>(build_tuple<0>(enums, entries...));
+    template <typename... Args>
+    constexpr static auto make_table(const Args&... args) -> Self {
+        static_assert(sizeof...(Args) == Indexer::size);
+        return make_table_helper(
+                std::array<std::pair<EnumType, std::tuple<ValueTypes...> >, Indexer::size>{args...},
+                std::make_index_sequence<Indexer::size>{});
     }
-
-    // template <size_t i>
-    // constexpr const TableEntryType<i>& get() const {
-    //     return std::get<i>(entries_);
-    // }
-
-    constexpr static size_t num_entries() {
-        return Indexer::size;
-    }
-
-    constexpr static size_t num_fields() {
-        return sizeof...(ValueTypes);
-    }
-
-    template <FieldEnum field>
-    constexpr const TableEntryType<field>& get() const {
-        return std::get<FieldsIndexer::template get<field>()>(entries_);
-    }
-
-    template <EnumType i, FieldEnum field>
-    constexpr const FieldType<field>& get() const {
-        return get<field>().template get<i>();
-    }
-
-    template <FieldEnum field>
-    constexpr const FieldType<field>* get(EnumType i) const {
-        return get<field>()[i];
-    }
-
-    template <FieldEnum field>
-    constexpr std::optional<EnumType> lookup(const FieldType<field>& value) const {
-        return lookup_helper<field>(value, std::make_index_sequence<Indexer::size>{});
-    }
-
-    constexpr static std::optional<size_t> to_index(EnumType i) {
+ 
+    constexpr static auto to_index(EnumType i) -> std::optional<size_t> {
         return Indexer::get(i);
     }
 
-    constexpr static std::optional<EnumType> from_index(size_t i) {
-        if (i < Indexer::size)
-            return Indexer::values[i];
+    constexpr static auto from_index(size_t i) -> std::optional<EnumType> {
+        return (i < Indexer::size) ? Indexer::values[i] : std::nullopt;
+    }
+   
+    // -- Static methods
+
+    constexpr static auto num_entries() -> size_t {
+        return Indexer::size;
+    }
+
+    constexpr static auto num_fields() -> size_t {
+        return FieldsIndexer::size;
+    }
+
+    // -- Templated getters
+    
+    template <EnumType e>
+    constexpr auto get() const -> EntryType const& {
+        return entries_[Indexer::template get<e>()];
+    }
+
+    template <EnumType e, FieldEnum field>
+    constexpr auto get() const -> FieldType<field> const& {
+        return get<e>().template get<field>();
+    }
+
+    // -- Run-time getters
+
+    constexpr auto get(EnumType e) const -> EntryType const* {
+        if (std::optional<size_t> index = Indexer::get(e)) {
+            return &entries_[*index];
+        }
+        return nullptr;
+    }
+
+    template <FieldEnum field>
+    constexpr auto get(EnumType e) const -> FieldType<field> const* {
+        if (const EntryType* entry = get(e)) {
+            return &entry->template get<field>();
+        }
+        return nullptr;
+    }
+
+    // -- Compile time getter (no references)
+
+    template <EnumType e>
+    constexpr auto c_get() const -> EntryType {
+        return entries_[Indexer::template get<e>()];
+    }
+
+    template <EnumType e, FieldEnum field>
+    constexpr auto c_get() const -> FieldType<field> {
+        return get<e>().template get<field>();
+    }
+
+    // -- Run-time lookups
+
+    using LookupType = std::pair<EnumType, std::reference_wrapper<const EntryType> >;
+
+    template <FieldEnum field>
+    auto lookup(const FieldType<field>& value) const -> std::optional<LookupType> {
+        for (size_t i = 0; i < num_entries(); i++) {
+            if (entries_[i].template get<field>() == value) {
+                return std::make_pair(Indexer::values[i], std::cref(entries_[i]));
+            }
+        }
         return std::nullopt;
     }
+
+    // -- Dispatch
+
+    // template <FieldEnum field, template <EnumType, FieldType> typename FunctorType, typename... Args>
+    // constexpr static auto dispatch(EnumType x, Args&&... args) {
+
+    // }
+
 
 private:
 
-    constexpr EnumTable(const TableTuple& t)
-        : entries_(t)
+    constexpr EnumTable(const TableType& entries)
+        : entries_(entries)
     {}
 
-    template <size_t i, typename... EntryTypes,
-             std::enable_if_t<i >= sizeof...(ValueTypes), bool> = true>
-    constexpr static auto build_tuple(const std::array<EnumType, Indexer::size>&, const EntryTypes&...) {
-        return std::make_tuple<>();
+    template <size_t... Is>
+    constexpr static auto make_table_helper(
+            const std::array<std::pair<EnumType, std::tuple<ValueTypes...> >, Indexer::size>& values,
+            std::index_sequence<Is...>) -> Self
+    {
+        return Self({reverse_lookup_1<Is>(values)...});
     }
 
-    template <size_t i, typename... EntryTypes,
-             std::enable_if_t<i < sizeof...(ValueTypes), bool> = true>
-    constexpr static auto build_tuple(const std::array<EnumType, Indexer::size>& enums, const EntryTypes&... entries) {
-        using ValueType = typename std::tuple_element<i, std::tuple<ValueTypes...> >::type;
-        return std::tuple_cat(
-                std::make_tuple(EnumTableEntry<Indexer, ValueType>::make_sorted(enums, {std::get<i+1>(entries)...})),
-                build_tuple<i+1>(enums, entries...)
-            );
+    template <size_t i>
+    constexpr static auto reverse_lookup_1(
+            const std::array<std::pair<EnumType, std::tuple<ValueTypes...> >, Indexer::size>& values)
+        -> const std::tuple<ValueTypes...>&
+    {
+        static_assert(i < Indexer::size);
+        std::optional<size_t> value_index = reverse_lookup<Indexer::values[i]>(values);
+        if (value_index) {
+            return std::get<1>(values[*value_index]);
+        }
+        __builtin_unreachable();
     }
 
-    template <FieldEnum field, size_t... Is>
-    constexpr std::optional<EnumType> lookup_helper(const FieldType<field>& value, std::index_sequence<Is...>) const {
-        return any_optional(lookup_match<Indexer::values[Is], field>(value)...);
+    template <EnumType target>
+    constexpr static auto reverse_lookup(
+            const std::array<std::pair<EnumType, std::tuple<ValueTypes...> >, Indexer::size>& values)
+        -> std::optional<size_t>
+    {
+        return ::find_index(values, [] (const auto& x) { return std::get<0>(x) == target; });
     }
 
-    template <EnumType i, FieldEnum field>
-    constexpr std::optional<EnumType> lookup_match(const FieldType<field>& value) const {
-        if (get<i, field>() == value) return i;
-        return std::nullopt;
-    }
 
-    TableTuple entries_;
+    TableType entries_;
 };

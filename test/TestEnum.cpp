@@ -24,11 +24,11 @@ INDEXED_ENUM(ResultsFields,
 );
 
 constexpr static auto ResultsTable = EnumTable<ResultsIndexer, ResultsFieldsIndexer, std::string_view, int>::make_table(
-        std::tuple(Results::Bad, "Bad", -1),
-        std::tuple(Results::Unimplemented, "Unimplemented", 88),
-        std::tuple(Results::New, "New", -100),
-        std::tuple(Results::Good, "Good", 12),
-        std::tuple(Results::Ugly, "Ugly", 12893)
+        std::make_pair(Results::Bad,            std::tuple("Bad", -1)),
+        std::make_pair(Results::Unimplemented,  std::tuple("Unimplemented", 88)),
+        std::make_pair(Results::New,            std::tuple("New", -100)),
+        std::make_pair(Results::Good,           std::tuple("Good", 12)),
+        std::make_pair(Results::Ugly,           std::tuple("Ugly", 12893))
 );
 
 template <Results r>
@@ -53,11 +53,17 @@ TEST_CASE("Enum Table") {
 
     static_assert("Good" == ResultsTable.get<Results::Good, ResultsFields::Name>());
     static_assert("Unimplemented" == ResultsTable.get<Results::Unimplemented, ResultsFields::Name>());
-    static_assert(-100 == ResultsTable.get<ResultsFields::Value>().get<Results::New>());
-    static_assert(Results::Ugly == ResultsTable.lookup<ResultsFields::Name>("Ugly"));
+    static_assert(-100 == ResultsTable.get<Results::New>().get<ResultsFields::Value>());
 
-    int value = *ResultsTable.get<ResultsFields::Value>(Results::Bad);
-    REQUIRE(value == -1);
+    auto lookup_result = ResultsTable.lookup<ResultsFields::Name>("Ugly");
+    REQUIRE(lookup_result);
+    REQUIRE(std::get<0>(*lookup_result) == Results::Ugly);
+    const auto& entry = lookup_result->second.get();
+    REQUIRE(entry.get<ResultsFields::Value>() == 12893);
+
+    const int* value = ResultsTable.get<ResultsFields::Value>(Results::Bad);
+    REQUIRE(value);
+    REQUIRE(*value == -1);
 
     //ResultsIndexer::dispatch<handle_result>(Results::Good)("Good");
     auto check = ResultsIndexer::dispatch<check_result>(Results::Good, "Good");
