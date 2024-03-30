@@ -75,7 +75,7 @@ constexpr bool narrowed_type_fits(SourceType s) {
 
 template <typename DestType, typename SourceType>
 DestType binary_cast(const SourceType& source) {
-    static_assert(sizeof(DestType) >= sizeof(SourceType));
+    static_assert(sizeof(DestType) == sizeof(SourceType));
     DestType result;
     copy_raw_buffer(&result, &source, 1);
     return result;

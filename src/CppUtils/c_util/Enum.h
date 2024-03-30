@@ -238,7 +238,9 @@ public:
     }
 
     constexpr static auto from_index(size_t i) -> std::optional<EnumType> {
-        return (i < Indexer::size) ? Indexer::values[i] : std::nullopt;
+        if (i < Indexer::size)
+            return Indexer::values[i];
+        return std::nullopt;
     }
    
     // -- Static methods
