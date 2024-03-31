@@ -33,7 +33,7 @@ set(CppUtils_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}/CppUtils")
 set(CppUtils_BUILD_INCLUDE_DIR "${CppUtils_SOURCE_DIR}/src")
 
 # Options
-set(CppUtils_CXX_STD "cxx_std_14")
+set(CppUtils_CXX_STD "cxx_std_17")
 
 
 # Add actual library cmakes

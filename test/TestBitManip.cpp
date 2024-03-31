@@ -1,0 +1,127 @@
+#define CATCH_CONFIG_MAIN
+
+#include <catch2/catch.hpp>
+
+#include "CppUtils/c_util/BitManip.h"
+
+#include <iostream>
+
+TEST_CASE("Byte Array") {
+    std::array<uint8_t, 5> data = {0x5a, 0xb3, 0x01, 0x37, 0x4f};
+    ByteArray<Endianness::Little, 5> little(data.data());
+    ByteArray<Endianness::Big, 5> big(data.data());
+
+    for (size_t i = 0; i < 5; i++) {
+        REQUIRE(little[i] == data[i]);
+        REQUIRE(big[i] == data[4-i]);
+    }
+}
+
+TEST_CASE("Containg size bytes") {
+    REQUIRE(containing_size_bytes(0) == 0);
+    REQUIRE(containing_size_bytes(6) == 1);
+    REQUIRE(containing_size_bytes(8) == 1);
+    REQUIRE(containing_size_bytes(12) == 2);
+    REQUIRE(containing_size_bytes(16) == 2);
+    REQUIRE(containing_size_bytes(32) == 4);
+    REQUIRE(containing_size_bytes(64) == 8);
+}
+
+TEST_CASE("Interval Mask") {
+    REQUIRE(interval_mask<3,0,5,uint8_t>() == 0b0000'0000);
+    REQUIRE(interval_mask<0,8,0,uint8_t>() == 0b1111'1111);
+    REQUIRE(interval_mask<1,3,4,uint8_t>() == 0b0111'0000);
+    REQUIRE(interval_mask<0,1,7,uint8_t>() == 0b1000'0000);
+}
+
+TEST_CASE("Bit Array") {
+    std::array<uint8_t, 2> data = {0b0100'0110, 0b0001'1110};
+    BitArray<Endianness::Big, 12> bits(data.data());
+
+    REQUIRE(bits.get_bit(0) == 0);
+    REQUIRE(bits.get_bit(1) == 1);
+    REQUIRE(bits.get_bit(2) == 1);
+    REQUIRE(bits.get_bit(6) == 0);
+    REQUIRE(bits.get_bit(8) == 0);
+    REQUIRE(bits.get_bit(9) == 1);
+    REQUIRE(bits.get_bit(11) == 0);
+
+    
+    bits.set_bit_on(7);
+    REQUIRE(bits.get_bit(7) == 1);
+
+    bits.set_bit_off(3);
+    REQUIRE(bits.get_bit(3) == 0);
+
+    bits.set_bit(4, true);
+    REQUIRE(bits.get_bit(4) == 1);
+    bits.set_bit(4, false);
+    REQUIRE(bits.get_bit(4) == 0);
+}
+
+TEST_CASE("Bit Array Convert Small") {
+    {
+        uint8_t data = 0b0000'0101;
+        BitArray<Endianness::Little, 4> bits(&data);
+
+        REQUIRE(bits.convert<uint8_t>() == 5u);
+        REQUIRE(bits.convert<int8_t>() == 5);
+    }
+
+    {
+        uint8_t data = 0b0000'1101;
+        BitArray<Endianness::Little, 4> bits(&data);
+
+        REQUIRE(bits.convert<uint8_t>() == 13u);
+        REQUIRE(bits.convert<int8_t>() == -3);
+    }
+}
+
+TEST_CASE("Bit Array Convert Large") {
+    {
+        std::array<uint8_t, 2> data = {0b0000'0100, 0b1010'1110};
+        BitArray<Endianness::Big, 12> bits(data.data());
+
+        REQUIRE(bits.convert<uint16_t>() == 1198u);
+        REQUIRE(bits.convert<int16_t>() == 1198);
+    }
+
+    {
+        std::array<uint8_t, 2> data = {0b0000'1100, 0b1010'1110};
+        BitArray<Endianness::Big, 12> bits(data.data());
+
+        REQUIRE(bits.convert<uint16_t>() == 3246u);
+        REQUIRE(bits.convert<int16_t>() == -850);
+    }
+}
+
+TEST_CASE("Bit Array Convert Consistency") {
+    uint32_t value = 0x3F'2A'88'17;
+    uint32_t buffer_data;
+    ArrayView<uint32_t, 1> buffer(&buffer_data);
+    REQUIRE(make_bit_array<Endianness::Little>(buffer, value).convert<uint32_t>() == value);
+
+    int32_t signed_value = -384999384;
+    REQUIRE(make_bit_array<Endianness::Little>(buffer, signed_value).convert<int32_t>() == signed_value);
+}
+
+TEST_CASE("Twos compliment") {
+    auto check = [](int32_t value) {
+            uint32_t buffer;
+            auto bits = make_bit_array<Endianness::Little>(ArrayView<uint32_t,1>(&buffer), value);
+            bits.twos_compliment();
+            REQUIRE(bits.convert<int32_t>() == -value);
+        };
+
+    check(0);
+    check(123);
+    check(-384999384);
+
+    {
+        std::array<uint8_t, 2> data = {0b0000'1100, 0b1010'1110};
+        BitArray<Endianness::Big, 12> bits(data.data());
+
+        bits.twos_compliment();
+        REQUIRE(bits.convert<int16_t>() == 850);
+    }
+}
