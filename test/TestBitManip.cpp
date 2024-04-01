@@ -3,8 +3,20 @@
 #include <catch2/catch.hpp>
 
 #include "CppUtils/c_util/BitManip.h"
+#include "CppUtils/c_util/ByteArray.h"
+#include "CppUtils/c_util/BitArray.h"
 
 #include <iostream>
+#include <sstream>
+
+template <size_t N, typename T, typename U>
+bool equals(const T& a, const U& b) {
+    for (size_t i = 0; i < N; i++) {
+        if (a[i] != b[i])
+            return false;
+    }
+    return true;
+}
 
 TEST_CASE("Byte Array") {
     std::array<uint8_t, 5> data = {0x5a, 0xb3, 0x01, 0x37, 0x4f};
@@ -124,4 +136,29 @@ TEST_CASE("Twos compliment") {
         bits.twos_compliment();
         REQUIRE(bits.convert<int16_t>() == 850);
     }
+}
+
+TEST_CASE("Justify") {
+    std::array<uint8_t, 2> data = {0b0000'1010, 0b1101'0111};
+    BitArray<Endianness::Big, 12> bits(data.data());
+
+    left_justify(bits);
+    REQUIRE(equals<2>(data ,std::array<uint8_t, 2>{0b1010'1101, 0b0111'0000}));
+
+    BitArray<Endianness::Big, 12> new_bits = right_justify<12>(ArrayView<uint8_t,2>(data.data()));
+    REQUIRE(equals<2>(new_bits.bytes(), std::array<uint8_t,2>{0b0000'1010, 0b1101'0111}));
+}
+
+TEST_CASE("Print") {
+    std::array<uint8_t, 2> data = {0b0000'1010, 0b1101'0111};
+
+    std::stringstream byte_result;
+    ByteArray<Endianness::Big, 2> bytes(data.data());
+    byte_result << bytes;
+    REQUIRE(byte_result.str() == "0xad7");
+
+    std::stringstream bit_result;
+    BitArray<Endianness::Big, 12> bits(data.data());
+    bit_result << bits;
+    REQUIRE(bit_result.str() == "101011010111");
 }
