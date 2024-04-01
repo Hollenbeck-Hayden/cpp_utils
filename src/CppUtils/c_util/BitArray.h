@@ -65,10 +65,12 @@ public:
      */
     template <typename T>
     T convert() const {
-        static_assert(sizeof(T) == data_.size());
+        static_assert(sizeof(T) >= data_.size());
         T result = 0;
         if (!data_.empty()) {
             if (std::is_signed_v<T> && get_bit(N_bits - 1)) {
+                constexpr size_t N_msb_bits = n_bits_per_byte - N_padding;
+                result = interval_mask<0, bit_sizeof<T>() - N_msb_bits, N_msb_bits, T>();
                 result |= static_cast<T>(padding_mask | data_.msb());
             } else {
                 result |= static_cast<T>(~padding_mask & data_.msb());
@@ -138,8 +140,9 @@ void left_justify(BitArray<Endianness::Big, N_bits>& data) {
     if (data.empty()) return;
 
     for (size_t i = 0; i+1 < data.N_bytes; i++) {
-        data.bytes()[i] = left_justify<n_bits_per_byte - data.N_padding>(data.bytes()[i]) 
-                          | right_justify<data.N_padding>(data.bytes()[i+1]);
+        size_t index = data.N_bytes - i - 1;
+        data.bytes()[index] = left_justify<n_bits_per_byte - data.N_padding>(data.bytes()[index]) 
+                              | right_justify<data.N_padding>(data.bytes()[index-1]);
     }
     data.bytes().lsb() = left_justify<n_bits_per_byte - data.N_padding>(data.bytes().lsb());
 }
@@ -154,9 +157,8 @@ BitArray<Endianness::Big, N_bits> right_justify(ArrayView<uint8_t, containing_si
     BitArray<Endianness::Big, N_bits> data(buffer);
 
     for (size_t i = 0; i+1 < data.N_bytes; i++) {
-        size_t index = data.N_bytes - i - 1;
-        data.bytes()[index] = right_justify<data.N_padding>(data.bytes()[index])
-                              | left_justify<n_bits_per_byte - data.N_padding>(data.bytes()[index-1]);
+        data.bytes()[i] = right_justify<n_bits_per_byte - data.N_padding>(data.bytes()[i])
+                          | left_justify<data.N_padding>(data.bytes()[i+1]);
     }
     data.bytes().msb() = right_justify<n_bits_per_byte - data.N_padding>(data.bytes().msb());
     return data;

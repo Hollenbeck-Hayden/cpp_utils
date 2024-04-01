@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 /*
  * Non-owning view of a finite size array.
  */
@@ -11,6 +13,10 @@ public:
 
     ArrayView(T* arr)
         : data_(arr)
+    {}
+
+    ArrayView(std::array<T,N>& arr)
+        : data_(arr.data())
     {}
 
     ArrayView(const Self& arr)

@@ -9,6 +9,8 @@
 #include <iostream>
 #include <sstream>
 
+using BitArray12 = BitArray<Endianness::Big, 12>;
+
 template <size_t N, typename T, typename U>
 bool equals(const T& a, const U& b) {
     for (size_t i = 0; i < N; i++) {
@@ -48,7 +50,7 @@ TEST_CASE("Interval Mask") {
 
 TEST_CASE("Bit Array") {
     std::array<uint8_t, 2> data = {0b0100'0110, 0b0001'1110};
-    BitArray<Endianness::Big, 12> bits(data.data());
+    BitArray12 bits(data.data());
 
     REQUIRE(bits.get_bit(0) == 0);
     REQUIRE(bits.get_bit(1) == 1);
@@ -92,18 +94,26 @@ TEST_CASE("Bit Array Convert Small") {
 TEST_CASE("Bit Array Convert Large") {
     {
         std::array<uint8_t, 2> data = {0b0000'0100, 0b1010'1110};
-        BitArray<Endianness::Big, 12> bits(data.data());
+        BitArray12 bits(data.data());
 
         REQUIRE(bits.convert<uint16_t>() == 1198u);
         REQUIRE(bits.convert<int16_t>() == 1198);
+        REQUIRE(bits.convert<uint32_t>() == bits.convert<uint16_t>());
+        REQUIRE(bits.convert<uint64_t>() == bits.convert<uint16_t>());
+        REQUIRE(bits.convert<int32_t>() == bits.convert<int16_t>());
+        REQUIRE(bits.convert<int64_t>() == bits.convert<int16_t>());
     }
 
     {
         std::array<uint8_t, 2> data = {0b0000'1100, 0b1010'1110};
-        BitArray<Endianness::Big, 12> bits(data.data());
+        BitArray12 bits(data.data());
 
         REQUIRE(bits.convert<uint16_t>() == 3246u);
         REQUIRE(bits.convert<int16_t>() == -850);
+        REQUIRE(bits.convert<uint32_t>() == bits.convert<uint16_t>());
+        REQUIRE(bits.convert<uint64_t>() == bits.convert<uint16_t>());
+        REQUIRE(bits.convert<int32_t>() == bits.convert<int16_t>());
+        REQUIRE(bits.convert<int64_t>() == bits.convert<int16_t>());
     }
 }
 
@@ -131,7 +141,7 @@ TEST_CASE("Twos compliment") {
 
     {
         std::array<uint8_t, 2> data = {0b0000'1100, 0b1010'1110};
-        BitArray<Endianness::Big, 12> bits(data.data());
+        BitArray12 bits(data.data());
 
         bits.twos_compliment();
         REQUIRE(bits.convert<int16_t>() == 850);
@@ -140,13 +150,13 @@ TEST_CASE("Twos compliment") {
 
 TEST_CASE("Justify") {
     std::array<uint8_t, 2> data = {0b0000'1010, 0b1101'0111};
-    BitArray<Endianness::Big, 12> bits(data.data());
+    BitArray12 bits(data.data());
 
     left_justify(bits);
     REQUIRE(equals<2>(data ,std::array<uint8_t, 2>{0b1010'1101, 0b0111'0000}));
 
-    BitArray<Endianness::Big, 12> new_bits = right_justify<12>(ArrayView<uint8_t,2>(data.data()));
-    REQUIRE(equals<2>(new_bits.bytes(), std::array<uint8_t,2>{0b0000'1010, 0b1101'0111}));
+    BitArray12 new_bits = right_justify<12>(ArrayView<uint8_t,2>(data.data()));
+    REQUIRE(equals<2>(data, std::array<uint8_t,2>{0b0000'1010, 0b1101'0111}));
 }
 
 TEST_CASE("Print") {
@@ -158,7 +168,66 @@ TEST_CASE("Print") {
     REQUIRE(byte_result.str() == "0xad7");
 
     std::stringstream bit_result;
-    BitArray<Endianness::Big, 12> bits(data.data());
+    BitArray12 bits(data.data());
     bit_result << bits;
     REQUIRE(bit_result.str() == "101011010111");
 }
+
+
+// TEST_CASE("Unpack Array") {
+//     std::array<uint32_t, 3> data = {0xf1c373'8d5732'aa,
+//                                     0x8392'bc0314'73f1,
+//                                     0x73'9ff213'7a3258};
+// 
+//     std::array<uint32_t, 8> target = {0xf1c373,
+//                                       0x8d5732,
+//                                       0xaa8392,
+//                                       0xbc0314,
+//                                       0x73f173,
+//                                       0x9ff213,
+//                                       0x7a3258};
+// 
+//     std::array<uint16_t, 8> buffer = {0, 0, 0, 0, 0, 0, 0, 0};
+//     std::array<BitArray12 > bits_array = BitArray12::read_arrays(data, buffer);
+//     for (size_t i = 0; i < 8; i++) {
+//         REQUIRE(static_cast<uint32_t>(bits_array[i].convert<uint16_t>()) == target[i]);
+//     }
+// 
+//     std::array<uint32_t, 8> result = {0, 0, 0, 0, 0, 0, 0, 0};
+//     BitArray12::unpack_into(data, result);
+//     REQUIRE(equals<8>(target, result));
+// }
+// 
+// TEST_CASE("Pack Array") {
+//     std::array<uint16_t, 8> data = {0xf1c373,
+//                                     0x8d5732,
+//                                     0xaa8392,
+//                                     0xbc0314,
+//                                     0x73f173,
+//                                     0x9ff213,
+//                                     0x7a3258};
+// 
+//     std::array<uint32_t, 3> target = {0xf1c373'8d5732'aa,
+//                                       0x8392'bc0314'73f1,
+//                                       0x73'9ff213'7a3258};
+// 
+//     std::array<uint16_t, 8> buffer = {0, 0, 0, 0, 0, 0, 0, 0};
+//     std::array<BitArray12, 8> bit_arrays = BitArray12::make_arrays(data);
+//     std::array<uint32_t, 3> result = {0, 0, 0};
+//     BitArray12::pack(bit_arrays, result);
+// 
+//     REQUIRE(equals<3>(result, target));
+// 
+//     result = {0, 0, 0};
+//     BitArray12::pack_into(data, result);
+//     REQUIRE(equals<3>(result, target));
+// }
+// 
+// TEST_CASE("Unpack bits") {
+// }
+// 
+// TEST_CASE("Pack bits") {
+//     std::array<uint8_t, 2> result = 0;
+//     pack_bits<Endianness::Big, 1,4,2,1,2,5,1>(result, 0b1, 0b1011, 0b10, 0b0, 0b11, 0b01101, 0b1);
+//     REQUIRE(equals<2>(result == {0b1'1011'10'0, 0b11'01101'1});
+// }

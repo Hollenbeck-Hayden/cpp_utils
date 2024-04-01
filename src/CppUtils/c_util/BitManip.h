@@ -12,8 +12,11 @@ constexpr size_t bit_sizeof() {
 template <size_t left, size_t middle, size_t right, typename T>
 constexpr T interval_mask() {
     static_assert(left + middle + right == bit_sizeof<T>());
-    if (middle == bit_sizeof<T>()) return ~T{0};
-    return ((T{0b1} << middle) - 1) << right;
+    if constexpr (middle == bit_sizeof<T>()) {
+        return ~T{0};
+    } else {
+        return ((T{0b1} << middle) - 1) << right;
+    }
 }
 
 /*
