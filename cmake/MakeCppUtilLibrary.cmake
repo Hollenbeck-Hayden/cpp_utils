@@ -11,7 +11,7 @@ function(make_CppUtils_library LIBRARY_NAME FOLDER_NAME)
 
     target_include_directories(${LIBRARY_NAME} PUBLIC
         "$<BUILD_INTERFACE:${CppUtils_BUILD_INCLUDE_DIR}>"
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:include>"
     )
 
     target_compile_features(${LIBRARY_NAME} PUBLIC cxx_std_17)
@@ -39,7 +39,7 @@ function(install_CppUtils_library LIBRARY_NAME FOLDER_NAME)
         EXPORT ${TARGETS_NAME}
         FILE ${TARGETS_NAME}.cmake
         NAMESPACE ${PROJECT_NAME}::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+        DESTINATION "lib/cmake/${PROJECT_NAME}"
     )
 endfunction()
 
@@ -50,7 +50,7 @@ function(make_CppUtils_header_library LIBRARY_NAME FOLDER_NAME)
 
     target_include_directories(${LIBRARY_NAME} INTERFACE
         "$<BUILD_INTERFACE:${CppUtils_BUILD_INCLUDE_DIR}>"
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:include>"
     )
 
     target_compile_features(${LIBRARY_NAME} INTERFACE cxx_std_17)

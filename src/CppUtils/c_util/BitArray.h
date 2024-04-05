@@ -6,6 +6,9 @@ constexpr size_t containing_size_bytes(size_t N_bits) {
     return (N_bits / n_bits_per_byte) + static_cast<size_t>((N_bits % n_bits_per_byte) > 0);
 }
 
+template <typename T>
+void print_bits(T value);
+
 /*
  * Handles an N-bit data type. Provides bitwise access, as well as
  * simple operations on the type as an N-bit unsigned / signed integer.
@@ -58,6 +61,8 @@ public:
         if (value)  set_bit_on (i);
         else        set_bit_off(i);
     }
+
+    constexpr static size_t size() { return N_bits; }
 
     /*
      * Convert the bit array to a fundamental integral type represented by the
@@ -115,6 +120,45 @@ public:
 
     constexpr static bool empty() { return N_bits == 0; }
 
+    /*  length = 7
+     *  offset = 6
+     *
+     *  10100010 01011110
+     *     XXXXX XX
+     * 15         6  <- 0
+     */
+    template <typename T, size_t length, size_t offset>
+    constexpr T interval() const {
+        static_assert(length <= bit_sizeof<T>());
+        static_assert(length + offset <= N_bits);
+
+        constexpr size_t start_byte = containing_size_bytes(length + offset) - 1;
+        constexpr size_t start_bits = length + offset - start_byte * n_bits_per_byte;
+
+        constexpr size_t end_byte = offset / n_bits_per_byte;
+        constexpr size_t end_bits = n_bits_per_byte * (end_byte + 1) - offset;
+
+        if constexpr (start_byte == end_byte) {
+            return static_cast<T>(right_justify<length>(left_justify<start_bits>(data_[start_byte])));
+        }
+
+        T result = 0;
+
+        if constexpr (start_byte < N_bytes) {
+            constexpr uint8_t mask = interval_mask<n_bits_per_byte - start_bits, start_bits, 0, uint8_t>();
+            result |= mask & data_[start_byte];
+        } 
+
+        for (size_t i = 1; i+1 < start_byte - end_byte; i++) {
+            size_t r_index = start_byte - i;
+            result = (result << n_bits_per_byte) | data_[r_index];
+        }
+
+        result = (result << end_bits) | right_justify<end_bits>(data_[end_byte]);
+
+        return result;
+    }
+
 private:
     constexpr size_t byte_index(size_t i) const {
         return i/n_bits_per_byte;
@@ -126,6 +170,11 @@ private:
 
     ByteArray<endian, N_bytes> data_;
 };
+
+template <typename T>
+void print_bits(T value) {
+    std::cout << BitArray<Endianness::Little, bit_sizeof<T>()>((uint8_t*) &value);
+}
 
 template <Endianness endian, size_t N, typename T, typename U>
 BitArray<endian, N> make_bit_array(ArrayView<T, sizeof(U)/sizeof(T)> buffer, U value) {
@@ -163,4 +212,55 @@ BitArray<Endianness::Big, N_bits> right_justify(ArrayView<uint8_t, containing_si
     }
     data.bytes().msb() = right_justify<n_bits_per_byte - data.N_padding>(data.bytes().msb());
     return data;
+}
+
+template <typename... BitArrays>
+constexpr size_t total_size() {
+    return (BitArrays::size() + ...);
+}
+
+namespace detail {
+template <typename T, size_t N, size_t i_buffer, size_t i_bits, size_t j_bits, typename... BitArrays,
+         std::enable_if_t<sizeof...(BitArrays) == 0, bool> = true>
+void pack(ArrayView<T,N>, const BitArrays&...) {
+    static_assert(i_buffer == N);
+    static_assert(i_bits == 0);
+    static_assert(j_bits == 0);
+}
+
+template <typename T, size_t N, size_t i_buffer, size_t i_bits, size_t j_bits, typename BitArrayType, typename... BitArrays>
+void pack(ArrayView<T,N> buffer, const BitArrayType& bits, const BitArrays&... bit_arrays) {
+    static_assert(i_buffer < N);
+    static_assert(i_bits < bit_sizeof<T>());
+    static_assert(j_bits < BitArrayType::size());
+
+    constexpr size_t pack_bits = std::min(bit_sizeof<T>() - i_bits, BitArrayType::size() - j_bits);
+
+    // Don't try to left shfit by the size of T
+    if constexpr (pack_bits < bit_sizeof<T>()) {
+        buffer[i_buffer] = buffer[i_buffer] << pack_bits;
+    } 
+
+    buffer[i_buffer] |= bits.template interval<T, pack_bits, bits.size() - (pack_bits + j_bits)>();
+
+    if constexpr (j_bits + pack_bits == BitArrayType::size()) {
+        if constexpr (i_bits + pack_bits == bit_sizeof<T>()) {
+            pack<T,N, i_buffer+1, 0, 0, BitArrays...>(buffer, bit_arrays...);
+        } else {
+            pack<T,N, i_buffer, i_bits+pack_bits, 0, BitArrays...>(buffer, bit_arrays...);
+        }
+    } else {
+        if constexpr (i_bits + pack_bits == bit_sizeof<T>()) {
+            pack<T,N, i_buffer+1, 0, j_bits + pack_bits, BitArrayType, BitArrays...>(buffer, bits, bit_arrays...);
+        } else {
+            pack<T,N, i_buffer, i_bits+pack_bits, j_bits + pack_bits, BitArrayType, BitArrays...>(buffer, bits, bit_arrays...);
+        }
+    }
+}
+}
+
+
+template <typename T, size_t N, typename... BitArrays>
+void pack(ArrayView<T, N> buffer_view, const BitArrays&... bit_arrays) {
+    detail::pack<T, N, 0, 0, 0, BitArrays...>(buffer_view, bit_arrays...);
 }

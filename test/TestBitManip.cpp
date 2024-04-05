@@ -231,3 +231,38 @@ TEST_CASE("Print") {
 //     pack_bits<Endianness::Big, 1,4,2,1,2,5,1>(result, 0b1, 0b1011, 0b10, 0b0, 0b11, 0b01101, 0b1);
 //     REQUIRE(equals<2>(result == {0b1'1011'10'0, 0b11'01101'1});
 // }
+
+
+TEST_CASE("Interval") {
+    std::array<uint8_t, 2> data = {0b1011'0110, 0b0111'0001};
+
+    const BitArray<Endianness::Big, 12> bits(data.data());
+
+    REQUIRE(bits.interval<uint16_t, 4, 8>() == 0b0110);
+    REQUIRE(bits.interval<uint16_t, 7, 3>() == 0b1001110);
+    
+    const BitArray<Endianness::Big, 16> bits16(data.data());
+
+    REQUIRE(bits16.interval<uint16_t, 1, 0>() == 0b1);
+    REQUIRE(bits16.interval<uint16_t, 8, 0>() == 0b01110001);
+    REQUIRE(bits16.interval<uint16_t, 8, 8>() == 0b10110110);
+    REQUIRE(bits16.interval<uint16_t, 16, 0>() == 0b1011011001110001);
+}
+
+
+TEST_CASE("Pack") {
+    std::array<uint8_t, 2> result = {0, 0};
+
+    std::array<uint8_t, 4> data = {0b0000'0010,
+                                   0b1011'1110,
+                                   0b0000'0101,
+                                   0b0000'0110};
+
+    pack(ArrayView<uint8_t, 2>(result),
+            BitArray<Endianness::Big, 2>(&data[0]),
+            BitArray<Endianness::Big, 8>(&data[1]),
+            BitArray<Endianness::Big, 3>(&data[2]),
+            BitArray<Endianness::Big, 3>(&data[3]));
+
+    REQUIRE(equals<2>(result, std::array<uint8_t, 2>{0b1010'1111, 0b1010'1110}));
+}
