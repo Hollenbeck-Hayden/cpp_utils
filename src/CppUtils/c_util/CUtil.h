@@ -28,12 +28,12 @@ void zero_buffer(T* t) {
 }
 
 template <typename T>
-void copy_buffer(T* destination, T* source, size_t N) {
+void copy_buffer(T* destination, const T* source, size_t N) {
     copy_raw_buffer(destination, source, N);
 }
 
 template <typename T, typename U>
-void copy_raw_buffer(T* destination, U* source, size_t N) {
+void copy_raw_buffer(T* destination, const U* source, size_t N) {
     std::memcpy((void*) destination, (void*) source, N * sizeof(U));
 }
 

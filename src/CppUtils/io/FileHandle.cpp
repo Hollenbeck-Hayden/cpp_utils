@@ -51,7 +51,11 @@ void FileHandle::_write(const uint8_t* buffer, size_t N) {
 }
 
 void FileHandle::_read(uint8_t* buffer, size_t N) {
-    size_t n_read = fread(buffer, sizeof(uint8_t), N, file_);
+    size_t n_read = _var_read(buffer, N);
     if (n_read != N)
         throw std::runtime_error("Read failure");
+}
+
+size_t FileHandle::_var_read(uint8_t* buffer, size_t N) {
+    return fread(buffer, sizeof(uint8_t), N, file_);
 }
