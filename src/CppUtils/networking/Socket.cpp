@@ -83,7 +83,15 @@ void SocketHandle::_read(uint8_t* buffer, size_t N) {
 
     detail::staggered_io(
             [this] (uint8_t* xs, size_t n) {
-                return ::recv(socket_fd_, xs, n, 0);
+                return this->_var_read(xs, n);
             },
             buffer, N);
+}
+
+size_t SocketHandle::_var_read(uint8_t* buffer, size_t N) {
+    int result = ::recv(socket_fd_, buffer, N, 0);
+    if (result < 0)
+        throw std::runtime_error("Error while reading data from socket");
+    else
+        return static_cast<size_t>(result);
 }

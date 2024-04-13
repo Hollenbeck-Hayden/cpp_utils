@@ -21,4 +21,8 @@ protected:
     virtual void read_impl(uint8_t* buffer, size_t N) override {
         T::_read(buffer, N);
     }
+
+    virtual size_t var_read_impl(uint8_t* buffer, size_t N) override {
+        return T::_var_read(buffer, N);
+    }
 };
