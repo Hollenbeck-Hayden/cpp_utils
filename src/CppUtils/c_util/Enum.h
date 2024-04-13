@@ -354,3 +354,69 @@ private:
 
     TableType entries_;
 };
+
+/*
+ *
+ * template <Indexer, FieldsIndexer, ValueTypes...>
+ * class FixedEnumTableImpl {
+ *      using EntryType = EnumTableEntry<FieldsIndexer, ValueTypes...>;
+ *      using TableType = std::array<EntryType, Indexer::size>;
+ *
+ *      template <size_t i>
+ *      const EntryType& get() const { return std::get<i>(entries_); }
+ * };
+ *
+ * template <typename FieldsIndexer, typename TupleType, typename Seq>
+ * struct VariableEnumTableEntry;
+ *
+ * template <typename FieldsIndexer, typename TupleType, size_t... Is>
+ * struct VariableEnumTableEntry<FieldsIndexer, std::index_sequence<Is...> > {
+ *      using type = EnumTableEntry<FieldsIndexer, typename std::get_element<Is, TupleType>::type...>;
+ * };
+ *
+ * template <Indexer, FieldsIndexer, EntryTypes...>
+ * class VariableEnumTableImpl {
+ *      using TableType = std::tuple<EntryTypes...>;
+ *
+ *      template <size_t i>
+ *      using EntryType = typename VariableEnumTableEntry<FieldsIndexer, std::tuple_element<i, TableType>, std::index_sequence<FieldsIndexer::size> >::type;
+ *
+ *      template <size_t i>
+ *      const EntryType<i>& get() const { return std::get<i>(entries_); }
+ * };
+ *
+ * template <typename EnumTableImpl>
+ * class EnumTable {
+ *  ....
+ * };
+ *
+ * using FixedEnumTable = EnumTable<FixedEnumTableImpl<...>>;
+ * using VariableEnumTable = EnumTable<VariableEnumTableImpl<...>>;
+ *
+ * 
+ *
+ *
+ * template <typename... Args>
+ * constexpr std::array<std::type_info, sizeof...(Args)> type_list() {
+ *      return std::array<std::type_info, sizeof...(Args)>{typeid(Args)...};
+ * }
+ *
+ * INDEXED_ENUM(CommandValue, Name, Function, Parameters);
+ *
+ * constexpr static auto CommandTable = VariableEnumTable<EnumIndexer, FieldsIndexer>::make_table(
+ *      std::pair{CommandCode::ALPHA,   std::make_tuple("Alpha"sv,  &func_alpha, std::array<std::type_info,3>(Int,Int,Float))},
+ *      ...
+ * );
+ *
+ * const std::vector<std::string> tokens = tokenize(input);
+ * if (input.empty()) continue;
+ * if (auto lookup_result = CommandTable.lookup<CommandValue::Name>(tokens[0])) {
+ *      tokens.erase(tokens.begin());
+ *      const auto& entry = lookup_result->second.get();
+ *
+ *      try {
+ *          std::tuple<auto> args = parse_arguments<entry.get<CommandValue::Parameters>()>(tokens);
+ *          std::apply(entry.get<CommandValue::Function>(), args);
+ *      } catch(...){}
+ * }
+ */
