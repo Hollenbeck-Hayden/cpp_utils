@@ -177,8 +177,9 @@ void print_bits(T value) {
 }
 
 template <Endianness endian, size_t N, typename T, typename U>
-BitArray<endian, bit_sizeof<U>()> make_bit_array(ArrayView<T, N> buffer, U value) {
-    return BitArray<endian, bit_sizeof<U>()>(make_byte_array<endian>(buffer, value));
+BitArray<endian, N> make_bit_array(ArrayView<T, sizeof(U)/sizeof(T)> buffer, U value) {
+    static_assert(buffer.size() * sizeof(T) == sizeof(U));
+    return BitArray<endian, N>(make_byte_array<endian>(buffer, value));
 }
 
 /*
