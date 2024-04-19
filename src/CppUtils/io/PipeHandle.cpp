@@ -74,7 +74,7 @@ InputPipeHandle::InputPipeHandle(const std::string& name) {
 
 void InputPipeHandle::open(const std::string& filename) {
     make_pipe(filename);
-    fd_ = ::open(filename.c_str(), O_RDONLY);
+    fd_ = ::open(filename.c_str(), O_RDONLY | O_NONBLOCK);
 }
 
 
@@ -88,5 +88,5 @@ OutputPipeHandle::OutputPipeHandle(const std::string& name) {
 
 void OutputPipeHandle::open(const std::string& filename) {
     make_pipe(filename);
-    fd_ = ::open(filename.c_str(), O_WRONLY);
+    fd_ = ::open(filename.c_str(), O_WRONLY | O_NONBLOCK);
 }
